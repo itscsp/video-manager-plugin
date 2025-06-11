@@ -1,4 +1,5 @@
 jQuery(document).ready(function($) {
+    console.log('Bunny.net: Admin script loaded');
     // Handle library refresh
     $('#refresh-libraries').on('click', function(e) {
         e.preventDefault();
@@ -49,6 +50,7 @@ jQuery(document).ready(function($) {
 
     // Handle video sync button click
     $('#sync-bunny-videos').on('click', function(e) {
+        debugger;
         e.preventDefault();
         console.log('Sync button clicked');
         var $button = $(this);

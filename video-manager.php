@@ -95,6 +95,27 @@ class Bunny_Video_Plugin {
         return $schedules;
     }
 
+    /**
+     * Cron callback for automatic video sync
+     */
+    public function cron_sync_videos() {
+        error_log('Bunny Video Plugin: Starting automatic cron sync...');
+        
+        // Load latest settings
+        $this->api_key = get_option('bunny_video_api_key', '');
+        $this->selected_library_id = get_option('bunny_video_library_id', '');
+        $this->stream_api_key = get_option('bunny_video_stream_api_key', '');
+        
+        // Run the sync
+        $result = $this->sync_videos();
+        
+        if (is_wp_error($result)) {
+            error_log('Bunny Video Plugin: Cron sync failed - ' . $result->get_error_message());
+        } else {
+            error_log('Bunny Video Plugin: Cron sync completed - ' . $result);
+        }
+    }
+
     public function register_video_post_type() {
         $args = array(
             'public' => true,
@@ -256,15 +277,21 @@ class Bunny_Video_Plugin {
     }
     
     public function enqueue_admin_scripts($hook) {
+        // Debug which page we're on
+        error_log('Bunny Video Plugin: Current admin page hook: ' . $hook);
+        
         // Load scripts on both settings page and main videos page
         if ($hook !== 'settings_page_bunny-video-settings' && $hook !== 'toplevel_page_bunny-videos') {
+            error_log('Bunny Video Plugin: Skipping script load - not on the right page');
             return;
         }
         
         // Debug: Check if we're on the right page
         error_log('Bunny Video Plugin: Enqueuing admin scripts on hook: ' . $hook);
+        $script_url = BUNNY_VIDEO_PLUGIN_URL . 'js/admin.js';
+        error_log('Bunny Video Plugin: Script URL: ' . $script_url);
         
-        wp_enqueue_script('bunny-video-admin', plugin_dir_url(__FILE__) . 'admin.js', array('jquery'), '1.0.0', true);
+        wp_enqueue_script('bunny-video-admin', $script_url, array('jquery'), BUNNY_VIDEO_VERSION, true);
         wp_localize_script('bunny-video-admin', 'bunny_ajax', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('bunny_video_nonce')
@@ -515,6 +542,14 @@ public function get_library_videos($library_id, $page = 1, $per_page = 100) {
         }
         
         error_log('Bunny Video Plugin: Starting video sync...');
+
+        // Create sync manager instance
+        $sync_manager = new Bunny_Video_Sync();
+        
+        // Pass the required configuration
+        $sync_manager->set_api_key($this->api_key);
+        $sync_manager->set_library_id($this->selected_library_id);
+        $sync_manager->set_stream_api_key($this->stream_api_key);
         
         $page = 1;
         $total_created = 0;
@@ -557,8 +592,9 @@ public function get_library_videos($library_id, $page = 1, $per_page = 100) {
             
         } while ($has_more && !empty($videos));
         
-        // Clean up deleted videos
-        $this->cleanup_deleted_videos($processed_guids);
+        // Clean up deleted videos using sync manager instance
+        $sync_manager = new Bunny_Video_Sync();
+        $sync_manager->cleanup_deleted_videos($processed_guids);
         
         $last_sync = current_time('mysql');
         update_option('bunny_video_last_sync', $last_sync);
@@ -580,9 +616,26 @@ public function get_library_videos($library_id, $page = 1, $per_page = 100) {
             'posts_per_page' => 1
         ));
         
+        // Create embed code
+        $embed_code = sprintf(
+            '<div class="bunny-video-player" style="position: relative; padding-bottom: 56.25%%; height: 0; margin-bottom: 30px;">
+                <iframe src="https://iframe.mediadelivery.net/embed/%s/%s" 
+                        style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;"
+                        allowfullscreen></iframe>
+            </div>',
+            esc_attr($this->selected_library_id),
+            esc_attr($guid)
+        );
+
+        // Combine embed code with description
+        $content = $embed_code;
+        if (isset($video['summary']) && !empty($video['summary'])) {
+            $content .= "\n\n" . wp_kses_post($video['summary']);
+        }
+
         $post_data = array(
             'post_title' => $title,
-            'post_content' => isset($video['summary']) ? $video['summary'] : '',
+            'post_content' => $content,
             'post_status' => 'publish',
             'post_type' => 'video'
         );
@@ -717,10 +770,27 @@ public function get_library_videos($library_id, $page = 1, $per_page = 100) {
             $guid = sanitize_text_field($_POST['guid']);
             $description = wp_kses_post($_POST['description']);
             
+            // Create embed code
+            $embed_code = sprintf(
+                '<div class="bunny-video-player" style="position: relative; padding-bottom: 56.25%%; height: 0; margin-bottom: 30px;">
+                    <iframe src="https://iframe.mediadelivery.net/embed/%s/%s" 
+                            style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;"
+                            allowfullscreen></iframe>
+                </div>',
+                esc_attr($this->selected_library_id),
+                esc_attr($guid)
+            );
+
+            // Combine embed code with description
+            $content = $embed_code;
+            if (!empty($description)) {
+                $content .= "\n\n" . $description;
+            }
+
             // Create post
             $post_data = array(
                 'post_title' => $title,
-                'post_content' => $description,
+                'post_content' => $content,
                 'post_status' => 'publish',
                 'post_type' => 'video'
             );
@@ -779,6 +849,8 @@ public function get_library_videos($library_id, $page = 1, $per_page = 100) {
         <?php
     }
 }
+
+
 
 // Helper function to check if we're in the admin area
 function is_admin_page() {

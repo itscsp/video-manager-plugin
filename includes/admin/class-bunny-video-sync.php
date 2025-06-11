@@ -1,4 +1,6 @@
 <?php
+defined('ABSPATH') || exit;
+
 class Bunny_Video_Sync {
     private $api_key;
     private $selected_library_id;
@@ -8,6 +10,18 @@ class Bunny_Video_Sync {
         $this->api_key = get_option('bunny_video_api_key', '');
         $this->selected_library_id = get_option('bunny_video_library_id', '');
         $this->stream_api_key = get_option('bunny_video_stream_api_key', '');
+    }
+
+    public function set_api_key($api_key) {
+        $this->api_key = $api_key;
+    }
+
+    public function set_library_id($library_id) {
+        $this->selected_library_id = $library_id;
+    }
+
+    public function set_stream_api_key($stream_api_key) {
+        $this->stream_api_key = $stream_api_key;
     }
 
     public function sync_videos() {
@@ -160,7 +174,7 @@ class Bunny_Video_Sync {
         return array('created' => $created, 'updated' => $updated, 'post_id' => $post_id);
     }
 
-    private function cleanup_deleted_videos($processed_guids) {
+    public function cleanup_deleted_videos($processed_guids) {
         $existing_videos = get_posts(array(
             'post_type' => 'video',
             'posts_per_page' => -1,

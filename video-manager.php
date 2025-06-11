@@ -581,8 +581,7 @@ class Bunny_Video_Plugin {
             
         } while ($has_more && !empty($videos));
         
-        // Clean up deleted videos using sync manager instance
-        $sync_manager = new Bunny_Video_Sync();
+        // Use the same sync manager instance for cleanup
         $sync_manager->cleanup_deleted_videos($processed_guids);
         
         $last_sync = current_time('mysql');

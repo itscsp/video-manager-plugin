@@ -1,4 +1,12 @@
 <?php
+defined('ABSPATH') || exit;
+
+// Include WordPress core functions
+require_once(ABSPATH . 'wp-includes/post.php');
+require_once(ABSPATH . 'wp-includes/pluggable.php');
+require_once(ABSPATH . 'wp-admin/includes/image.php');
+require_once(ABSPATH . 'wp-includes/meta.php');
+
 class Bunny_Video_Sync {
     private $api_key;
     private $selected_library_id;
@@ -8,6 +16,18 @@ class Bunny_Video_Sync {
         $this->api_key = get_option('bunny_video_api_key', '');
         $this->selected_library_id = get_option('bunny_video_library_id', '');
         $this->stream_api_key = get_option('bunny_video_stream_api_key', '');
+    }
+
+    public function set_api_key($api_key) {
+        $this->api_key = $api_key;
+    }
+
+    public function set_library_id($library_id) {
+        $this->selected_library_id = $library_id;
+    }
+
+    public function set_stream_api_key($stream_api_key) {
+        $this->stream_api_key = $stream_api_key;
     }
 
     public function sync_videos() {
@@ -160,19 +180,33 @@ class Bunny_Video_Sync {
         return array('created' => $created, 'updated' => $updated, 'post_id' => $post_id);
     }
 
-    private function cleanup_deleted_videos($processed_guids) {
+    public function cleanup_deleted_videos($processed_guids) {
+        error_log('Bunny Video Sync: Starting cleanup of deleted videos');
+        // Get all posts with _bvp_guid meta
         $existing_videos = get_posts(array(
             'post_type' => 'video',
             'posts_per_page' => -1,
-            'fields' => 'ids'
+            'meta_query' => array(
+                array(
+                    'key' => '_bvp_guid',
+                    'compare' => 'EXISTS',
+                )
+            )
         ));
 
-        foreach ($existing_videos as $post_id) {
+        foreach ($existing_videos as $post) {
+            $post_id = $post->ID;
             $guid = get_post_meta($post_id, '_bvp_guid', true);
-            if (!empty($guid) && !in_array($guid, $processed_guids)) {
+            
+            // If this video's GUID is not in the processed list, it means the video
+            // no longer exists in Bunny.net and should be deleted
+            if (!in_array($guid, $processed_guids)) {
+                error_log("Bunny Video Sync: Deleting post {$post_id} with GUID {$guid} as it no longer exists in Bunny.net");
                 wp_delete_post($post_id, true);
             }
         }
+        
+        error_log('Bunny Video Sync: Cleanup completed. Processed ' . count($existing_videos) . ' existing videos');
     }
 
     private function set_post_thumbnail_from_url($post_id, $image_url) {

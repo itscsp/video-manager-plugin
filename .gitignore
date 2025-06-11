@@ -8,7 +8,6 @@ package-lock.json
 .pnp.js
 
 # Build output
-build/
 dist/
 
 # WordPress plugin or theme specific

@@ -87,6 +87,14 @@ class Bunny_Video_Plugin {
         flush_rewrite_rules();
     }
     
+    public function add_cron_interval($schedules) {
+        $schedules['fifteen_minutes'] = array(
+            'interval' => 15 * 60, // 15 minutes in seconds
+            'display'  => esc_html__('Every 15 Minutes', 'bunny-video-plugin')
+        );
+        return $schedules;
+    }
+
     public function register_video_post_type() {
         $args = array(
             'public' => true,

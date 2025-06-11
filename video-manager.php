@@ -341,7 +341,7 @@ class Bunny_Video_Plugin {
                         <th scope="row">Video Library</th>
                         <td>
                             <div class="library-select-container">
-                                <select name="library_id" id="bunny-library-select" class="regular-text" required>
+                                <select name="library_id" id="bunny-library-select" class="regular-text">
                                     <option value="">Select a library...</option>
                                     <?php if ($libraries && !is_wp_error($libraries)): ?>
                                         <?php foreach ($libraries as $library): ?>

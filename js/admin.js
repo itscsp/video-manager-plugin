@@ -1,5 +1,14 @@
 jQuery(document).ready(function($) {
     console.log('Bunny.net: Admin script loaded');
+
+    var urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('post_type') === 'video') {
+        var $addPostBtn = $('.page-title-action');
+        if ($addPostBtn.length) {
+            $('<button id="sync-bunny-videos" class="page-title-action">Sync Videos from Bunny.net</button>').insertAfter($addPostBtn);
+        }
+    }
+
     // Handle library refresh
     $('#refresh-libraries').on('click', function(e) {
         e.preventDefault();

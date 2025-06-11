@@ -95,9 +95,6 @@ class Bunny_Video_Plugin {
         return $schedules;
     }
 
-    /**
-     * Cron callback for automatic video sync
-     */
     public function cron_sync_videos() {
         error_log('Bunny Video Plugin: Starting automatic cron sync...');
         
@@ -255,15 +252,6 @@ class Bunny_Video_Plugin {
             'dashicons-video-alt3'
         );
 
-        // Add submenu items
-        add_submenu_page(
-            'bunny-videos',
-            'Add New Video',
-            'Add New Video',
-            'manage_options',
-            'bunny-video-new',
-            array($this, 'add_video_page')
-        );
 
         // Add settings as submenu
         add_submenu_page(
@@ -276,15 +264,16 @@ class Bunny_Video_Plugin {
         );
     }
     
+    
     public function enqueue_admin_scripts($hook) {
         // Debug which page we're on
         error_log('Bunny Video Plugin: Current admin page hook: ' . $hook);
         
         // Load scripts on both settings page and main videos page
-        if ($hook !== 'settings_page_bunny-video-settings' && $hook !== 'toplevel_page_bunny-videos') {
-            error_log('Bunny Video Plugin: Skipping script load - not on the right page');
-            return;
-        }
+        // if ($hook !== 'settings_page_bunny-video-settings' && $hook !== 'toplevel_page_bunny-videos') {
+        //     error_log('Bunny Video Plugin: Skipping script load - not on the right page');
+        //     return;
+        // }
         
         // Debug: Check if we're on the right page
         error_log('Bunny Video Plugin: Enqueuing admin scripts on hook: ' . $hook);
@@ -302,105 +291,105 @@ class Bunny_Video_Plugin {
         error_log('Bunny Video Plugin: Nonce: ' . wp_create_nonce('bunny_video_nonce'));
     }
     
-
-public function admin_page() {
-    if (isset($_POST['submit'])) {
-        check_admin_referer('bunny_video_settings');
-        
-        // Save all settings
-        $main_api_key = sanitize_text_field($_POST['api_key']);
-        $library_id = sanitize_text_field($_POST['library_id']);
-        
-        update_option('bunny_video_api_key', $main_api_key);
-        update_option('bunny_video_library_id', $library_id);
-        
-        // Get stream API key from library info
-        $libraries = $this->get_video_libraries();
-        if (!is_wp_error($libraries)) {
-            foreach ($libraries as $library) {
-                if ($library['Id'] == $library_id) {
-                    update_option('bunny_video_stream_api_key', $library['ApiKey']);
-                    $this->stream_api_key = $library['ApiKey'];
-                    break;
+    public function admin_page() {
+        if (isset($_POST['submit'])) {
+            check_admin_referer('bunny_video_settings');
+            
+            // Save all settings
+            $main_api_key = sanitize_text_field($_POST['api_key']);
+            $library_id = sanitize_text_field($_POST['library_id']);
+            
+            update_option('bunny_video_api_key', $main_api_key);
+            update_option('bunny_video_library_id', $library_id);
+            
+            // Get stream API key from library info
+            $libraries = $this->get_video_libraries();
+            if (!is_wp_error($libraries)) {
+                foreach ($libraries as $library) {
+                    if ($library['Id'] == $library_id) {
+                        update_option('bunny_video_stream_api_key', $library['ApiKey']);
+                        $this->stream_api_key = $library['ApiKey'];
+                        break;
+                    }
                 }
             }
+            
+            $this->api_key = $main_api_key;
+            $this->selected_library_id = $library_id;
+            
+            echo '<div class="notice notice-success"><p>Settings saved! Stream API key automatically configured.</p></div>';
         }
         
-        $this->api_key = $main_api_key;
-        $this->selected_library_id = $library_id;
-        
-        echo '<div class="notice notice-success"><p>Settings saved! Stream API key automatically configured.</p></div>';
-    }
-    
-    // Get libraries for dropdown
-    $libraries = $this->get_video_libraries();
-    ?>
-    <div class="wrap">
-        <h1>Bunny Video Settings</h1>
-        
-        <form method="post" action="">
-            <?php wp_nonce_field('bunny_video_settings'); ?>
+        // Get libraries for dropdown
+        $libraries = $this->get_video_libraries();
+        ?>
+        <div class="wrap">
+            <h1>Bunny Video Settings</h1>
             
+            <form method="post" action="">
+                <?php wp_nonce_field('bunny_video_settings'); ?>
+                
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">API Key</th>
+                        <td>
+                            <input type="text" name="api_key" value="<?php echo esc_attr($this->api_key); ?>" class="regular-text" required />
+                            <p class="description">Your Bunny.net Management API key (from Account > API Keys)</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Video Library</th>
+                        <td>
+                            <div class="library-select-container">
+                                <select name="library_id" id="bunny-library-select" class="regular-text" required>
+                                    <option value="">Select a library...</option>
+                                    <?php if ($libraries && !is_wp_error($libraries)): ?>
+                                        <?php foreach ($libraries as $library): ?>
+                                            <option value="<?php echo esc_attr($library['Id']); ?>" 
+                                                    <?php selected($this->selected_library_id, $library['Id']); ?>>
+                                                <?php echo esc_html($library['Name'] . ' (ID: ' . $library['Id'] . ')'); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                                <button type="button" id="refresh-libraries" class="button">Refresh Libraries</button>
+                            </div>
+                            <p class="description">Stream API key will be automatically configured when you select a library</p>
+                            <?php if (is_wp_error($libraries)): ?>
+                                <div class="notice notice-error inline">
+                                    <p><?php echo esc_html($libraries->get_error_message()); ?></p>
+                                </div>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </table>
+                
+                <?php submit_button(); ?>
+            </form>
+            
+            <hr>
+            
+            <h2>Connection Status</h2>
             <table class="form-table">
                 <tr>
-                    <th scope="row">API Key</th>
-                    <td>
-                        <input type="text" name="api_key" value="<?php echo esc_attr($this->api_key); ?>" class="regular-text" required />
-                        <p class="description">Your Bunny.net Management API key (from Account > API Keys)</p>
-                    </td>
+                    <th>Management API Key:</th>
+                    <td><?php echo !empty($this->api_key) ? '✅ Configured' : '❌ Not configured'; ?></td>
                 </tr>
                 <tr>
-                    <th scope="row">Video Library</th>
-                    <td>
-                        <div class="library-select-container">
-                            <select name="library_id" id="bunny-library-select" class="regular-text" required>
-                                <option value="">Select a library...</option>
-                                <?php if ($libraries && !is_wp_error($libraries)): ?>
-                                    <?php foreach ($libraries as $library): ?>
-                                        <option value="<?php echo esc_attr($library['Id']); ?>" 
-                                                <?php selected($this->selected_library_id, $library['Id']); ?>>
-                                            <?php echo esc_html($library['Name'] . ' (ID: ' . $library['Id'] . ')'); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </select>
-                            <button type="button" id="refresh-libraries" class="button">Refresh Libraries</button>
-                        </div>
-                        <p class="description">Stream API key will be automatically configured when you select a library</p>
-                        <?php if (is_wp_error($libraries)): ?>
-                            <div class="notice notice-error inline">
-                                <p><?php echo esc_html($libraries->get_error_message()); ?></p>
-                            </div>
-                        <?php endif; ?>
-                    </td>
+                    <th>Stream API Key:</th>
+                    <td><?php echo !empty($this->stream_api_key) ? '✅ Configured' : '❌ Not configured'; ?></td>
+                </tr>
+                <tr>
+                    <th>Selected Library:</th>
+                    <td><?php echo !empty($this->selected_library_id) ? '✅ Selected (ID: ' . esc_html($this->selected_library_id) . ')' : '❌ Not selected'; ?></td>
                 </tr>
             </table>
             
-            <?php submit_button(); ?>
-        </form>
-        
-        <hr>
-        
-        <h2>Connection Status</h2>
-        <table class="form-table">
-            <tr>
-                <th>Management API Key:</th>
-                <td><?php echo !empty($this->api_key) ? '✅ Configured' : '❌ Not configured'; ?></td>
-            </tr>
-            <tr>
-                <th>Stream API Key:</th>
-                <td><?php echo !empty($this->stream_api_key) ? '✅ Configured' : '❌ Not configured'; ?></td>
-            </tr>
-            <tr>
-                <th>Selected Library:</th>
-                <td><?php echo !empty($this->selected_library_id) ? '✅ Selected (ID: ' . esc_html($this->selected_library_id) . ')' : '❌ Not selected'; ?></td>
-            </tr>
-        </table>
-        
-        <!-- Rest of your existing admin page code -->
-    </div>
-    <?php
-}
+            <!-- Rest of your existing admin page code -->
+        </div>
+        <?php
+    }
+
     public function test_connection() {
         // Add error logging
         error_log('Bunny Video Plugin: test_connection called');
@@ -453,88 +442,88 @@ public function admin_page() {
         error_log('Bunny Video Plugin: Sync completed - ' . $result);
         wp_send_json_success($result);
     }
-public function get_video_libraries() {
-    if (empty($this->api_key)) {
-        return new WP_Error('no_api_key', 'API key not configured');
-    }
-    
-    $response = wp_remote_get('https://api.bunny.net/videolibrary', array(
-        'headers' => array(
-            'AccessKey' => $this->api_key,
-            'Content-Type' => 'application/json'
-        ),
-        'timeout' => 30
-    ));
-    
-    if (is_wp_error($response)) {
-        error_log('Bunny Video Plugin: Library API Error: ' . $response->get_error_message());
-        return $response;
-    }
-    
-    $status_code = wp_remote_retrieve_response_code($response);
-    $body = wp_remote_retrieve_body($response);
-    $data = json_decode($body, true);
-    
-    error_log('Bunny Video Plugin: Library API Response: ' . $body);
-    
-    if ($status_code !== 200) {
-        return new WP_Error('api_error', 'API request failed: ' . $body);
-    }
-    
-    // The API returns a direct array, not an object with Items
-    return is_array($data) ? $data : array();
-}
 
-
-public function get_library_videos($library_id, $page = 1, $per_page = 100) {
-    if (empty($this->stream_api_key)) {
-        // Try to get it from the library info
-        $libraries = $this->get_video_libraries();
-        if (!is_wp_error($libraries)) {
-            foreach ($libraries as $library) {
-                if ($library['Id'] == $library_id) {
-                    $this->stream_api_key = $library['ApiKey'];
-                    update_option('bunny_video_stream_api_key', $library['ApiKey']);
-                    break;
-                }
-            }
+    public function get_video_libraries() {
+        if (empty($this->api_key)) {
+            return new WP_Error('no_api_key', 'API key not configured');
         }
         
-        if (empty($this->stream_api_key)) {
-            error_log('Bunny Video Plugin: Stream API key not found');
-            return new WP_Error('missing_stream_api', 'Stream API key could not be retrieved');
+        $response = wp_remote_get('https://api.bunny.net/videolibrary', array(
+            'headers' => array(
+                'AccessKey' => $this->api_key,
+                'Content-Type' => 'application/json'
+            ),
+            'timeout' => 30
+        ));
+        
+        if (is_wp_error($response)) {
+            error_log('Bunny Video Plugin: Library API Error: ' . $response->get_error_message());
+            return $response;
         }
+        
+        $status_code = wp_remote_retrieve_response_code($response);
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+        
+        error_log('Bunny Video Plugin: Library API Response: ' . $body);
+        
+        if ($status_code !== 200) {
+            return new WP_Error('api_error', 'API request failed: ' . $body);
+        }
+        
+        // The API returns a direct array, not an object with Items
+        return is_array($data) ? $data : array();
     }
 
-    $url = "https://video.bunnycdn.com/library/{$library_id}/videos?page={$page}&itemsPerPage={$per_page}&orderBy=date";
-    error_log('Bunny Video Plugin: Fetching videos from: ' . $url);
+    public function get_library_videos($library_id, $page = 1, $per_page = 100) {
+        if (empty($this->stream_api_key)) {
+            // Try to get it from the library info
+            $libraries = $this->get_video_libraries();
+            if (!is_wp_error($libraries)) {
+                foreach ($libraries as $library) {
+                    if ($library['Id'] == $library_id) {
+                        $this->stream_api_key = $library['ApiKey'];
+                        update_option('bunny_video_stream_api_key', $library['ApiKey']);
+                        break;
+                    }
+                }
+            }
+            
+            if (empty($this->stream_api_key)) {
+                error_log('Bunny Video Plugin: Stream API key not found');
+                return new WP_Error('missing_stream_api', 'Stream API key could not be retrieved');
+            }
+        }
 
-    $response = wp_remote_get($url, array(
-        'headers' => array(
-            'AccessKey' => $this->stream_api_key,
-            'accept' => 'application/json'
-        ),
-        'timeout' => 30
-    ));
+        $url = "https://video.bunnycdn.com/library/{$library_id}/videos?page={$page}&itemsPerPage={$per_page}&orderBy=date";
+        error_log('Bunny Video Plugin: Fetching videos from: ' . $url);
 
-    if (is_wp_error($response)) {
-        error_log('Bunny Video Plugin: API Error: ' . $response->get_error_message());
-        return $response;
+        $response = wp_remote_get($url, array(
+            'headers' => array(
+                'AccessKey' => $this->stream_api_key,
+                'accept' => 'application/json'
+            ),
+            'timeout' => 30
+        ));
+
+        if (is_wp_error($response)) {
+            error_log('Bunny Video Plugin: API Error: ' . $response->get_error_message());
+            return $response;
+        }
+
+        $status_code = wp_remote_retrieve_response_code($response);
+        $body = wp_remote_retrieve_body($response);
+
+        if ($status_code !== 200) {
+            error_log('Bunny Video Plugin: API Error: ' . $body);
+            return new WP_Error('api_error', 'API request failed: ' . $body);
+        }
+
+        $data = json_decode($body, true);
+        error_log('Bunny Video Plugin: Found ' . count($data['items']) . ' videos');
+        return $data;
     }
 
-    $status_code = wp_remote_retrieve_response_code($response);
-    $body = wp_remote_retrieve_body($response);
-
-    if ($status_code !== 200) {
-        error_log('Bunny Video Plugin: API Error: ' . $body);
-        return new WP_Error('api_error', 'API request failed: ' . $body);
-    }
-
-    $data = json_decode($body, true);
-    error_log('Bunny Video Plugin: Found ' . count($data['items']) . ' videos');
-    return $data;
-}
-    
     public function sync_videos() {
         if (empty($this->api_key) || empty($this->selected_library_id)) {
             error_log('Bunny Video Plugin: Missing API key or library ID');
@@ -715,7 +704,6 @@ public function get_library_videos($library_id, $page = 1, $per_page = 100) {
         ?>
         <div class="wrap">
             <h1 class="wp-heading-inline">Videos</h1>
-            <a href="<?php echo admin_url('admin.php?page=bunny-video-new'); ?>" class="page-title-action">Add New</a>
             <button id="sync-bunny-videos" class="page-title-action">Sync Videos from Bunny.net</button>
             <div id="sync-status" style="display: none; margin-top: 10px;" class="notice"></div>
             
@@ -762,99 +750,6 @@ public function get_library_videos($library_id, $page = 1, $per_page = 100) {
         <?php
     }
     
-    public function add_video_page() {
-        if (isset($_POST['submit'])) {
-            check_admin_referer('bunny_add_video');
-            
-            $title = sanitize_text_field($_POST['title']);
-            $guid = sanitize_text_field($_POST['guid']);
-            $description = wp_kses_post($_POST['description']);
-            
-            // Create embed code
-            $embed_code = sprintf(
-                '<div class="bunny-video-player" style="position: relative; padding-bottom: 56.25%%; height: 0; margin-bottom: 30px;">
-                    <iframe src="https://iframe.mediadelivery.net/embed/%s/%s" 
-                            style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%; border: 0;"
-                            allowfullscreen></iframe>
-                </div>',
-                esc_attr($this->selected_library_id),
-                esc_attr($guid)
-            );
-
-            // Combine embed code with description
-            $content = $embed_code;
-            if (!empty($description)) {
-                $content .= "\n\n" . $description;
-            }
-
-            // Create post
-            $post_data = array(
-                'post_title' => $title,
-                'post_content' => $content,
-                'post_status' => 'publish',
-                'post_type' => 'video'
-            );
-            
-            $post_id = wp_insert_post($post_data);
-            
-            if (!is_wp_error($post_id)) {
-                // Save video meta
-                update_post_meta($post_id, '_bvp_guid', $guid);
-                update_post_meta($post_id, '_bvp_library_id', $this->selected_library_id);
-                
-                // Set thumbnail
-                $thumbnail_url = "https://thumbnail.bunnycdn.com/{$this->selected_library_id}/{$guid}.jpg";
-                $this->set_post_thumbnail_from_url($post_id, $thumbnail_url);
-                
-                echo '<div class="notice notice-success"><p>Video added successfully! <a href="' . get_permalink($post_id) . '" target="_blank">View video</a></p></div>';
-            }
-        }
-        ?>
-        <div class="wrap">
-            <h1>Add New Video</h1>
-            
-            <form method="post" action="">
-                <?php wp_nonce_field('bunny_add_video'); ?>
-                
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">Title</th>
-                        <td>
-                            <input type="text" name="title" class="regular-text" required />
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Video GUID</th>
-                        <td>
-                            <input type="text" name="guid" class="regular-text" required />
-                            <p class="description">Enter the video GUID from Bunny.net (e.g., 12a3b456-c7d8-90e1-f234-gh5678901ij)</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Description</th>
-                        <td>
-                            <?php 
-                            wp_editor('', 'description', array(
-                                'media_buttons' => true,
-                                'textarea_rows' => 10
-                            ));
-                            ?>
-                        </td>
-                    </tr>
-                </table>
-                
-                <?php submit_button('Add Video'); ?>
-            </form>
-        </div>
-        <?php
-    }
-}
-
-
-
-// Helper function to check if we're in the admin area
-function is_admin_page() {
-    return is_admin();
 }
 
 // Initialize the plugin
@@ -865,11 +760,47 @@ function bunny_video_add_query_vars($vars) {
     $vars[] = 'video_id';
     return $vars;
 }
+
 add_filter('query_vars', 'bunny_video_add_query_vars');
 
-// Flush rewrite rules on plugin activation
 function bunny_video_flush_rewrites() {
     flush_rewrite_rules();
 }
 register_activation_hook(__FILE__, 'bunny_video_flush_rewrites');
+
+function create_block_videobunnydynamic_block_init() {
+	/**
+	 * Registers the block(s) metadata from the `blocks-manifest.php` and registers the block type(s)
+	 * based on the registered block metadata.
+	 * Added in WordPress 6.8 to simplify the block metadata registration process added in WordPress 6.7.
+	 *
+	 * @see https://make.wordpress.org/core/2025/03/13/more-efficient-block-type-registration-in-6-8/
+	 */
+	if ( function_exists( 'wp_register_block_types_from_metadata_collection' ) ) {
+		wp_register_block_types_from_metadata_collection( __DIR__ . '/build', __DIR__ . '/build/blocks-manifest.php' );
+		return;
+	}
+
+	/**
+	 * Registers the block(s) metadata from the `blocks-manifest.php` file.
+	 * Added to WordPress 6.7 to improve the performance of block type registration.
+	 *
+	 * @see https://make.wordpress.org/core/2024/10/17/new-block-type-registration-apis-to-improve-performance-in-wordpress-6-7/
+	 */
+	if ( function_exists( 'wp_register_block_metadata_collection' ) ) {
+		wp_register_block_metadata_collection( __DIR__ . '/build', __DIR__ . '/build/blocks-manifest.php' );
+	}
+	/**
+	 * Registers the block type(s) in the `blocks-manifest.php` file.
+	 *
+	 * @see https://developer.wordpress.org/reference/functions/register_block_type/
+	 */
+	$manifest_data = require __DIR__ . '/build/blocks-manifest.php';
+	foreach ( array_keys( $manifest_data ) as $block_type ) {
+		register_block_type( __DIR__ . "/build/{$block_type}" );
+	}
+}
+add_action( 'init', 'create_block_videobunnydynamic_block_init' );
+
+
 ?>

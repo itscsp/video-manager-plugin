@@ -1,0 +1,30 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.pnp/
+.pnp.js
+
+# Build output
+build/
+dist/
+
+# WordPress plugin or theme specific
+*.log
+.DS_Store
+Thumbs.db
+
+# OS or Editor files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Local env files
+.env
+.env.*
+
+# WP Scripts cache
+.wp-scripts-cache/

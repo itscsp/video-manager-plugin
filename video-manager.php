@@ -19,10 +19,6 @@ define('BUNNY_VIDEO_VERSION', '1.0.0');
 define('BUNNY_VIDEO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('BUNNY_VIDEO_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Load required files
-require_once BUNNY_VIDEO_PLUGIN_DIR . 'includes/admin/class-bunny-video-admin.php';
-require_once BUNNY_VIDEO_PLUGIN_DIR . 'includes/admin/class-bunny-video-sync.php';
-
 class Bunny_Video_Plugin {
     
     private $api_key;

@@ -1,0 +1,40 @@
+.bunny-video-settings .form-table {
+    margin-top: 20px;
+}
+
+.bunny-video-settings .api-status {
+    margin-top: 30px;
+}
+
+.bunny-video-sync-status {
+    margin-top: 15px;
+    padding: 10px 15px;
+    display: none;
+}
+
+.library-select-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+#bunny-library-select {
+    min-width: 300px;
+}
+
+.bunny-video-api-key {
+    min-width: 300px;
+}
+
+#refresh-libraries {
+    margin-top: 1px;
+}
+
+.bunny-video-table img {
+    max-width: 100px;
+    height: auto;
+}
+
+.bunny-sync-button {
+    margin-left: 10px !important;
+}

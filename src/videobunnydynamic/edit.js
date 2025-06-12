@@ -32,10 +32,12 @@ export default function Edit({ attributes, setAttributes }) {
     const fetchVideos = async () => {
         try {
             const response = await apiFetch({ path: '/wp/v2/video' });
-            const videoOptions = response.map(video => ({
-                label: video.title.rendered,
-                value: video.meta.bunny_video_id
-            }));
+            const videoOptions = response
+                .filter(video => video.meta && video.meta.bunny_video_id)
+                .map(video => ({
+                    label: video.title.rendered,
+                    value: video.meta.bunny_video_id
+                }));
             setVideos(videoOptions);
         } catch (error) {
             console.error('Error fetching videos:', error);

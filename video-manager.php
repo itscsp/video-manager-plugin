@@ -26,6 +26,7 @@ require_once BUNNY_VIDEO_PLUGIN_DIR . 'includes/admin/class-bunny-video-fields.p
 require_once BUNNY_VIDEO_PLUGIN_DIR . 'includes/admin/class-bunny-video-settings.php';
 require_once BUNNY_VIDEO_PLUGIN_DIR . 'includes/class-bunny-video-post-type.php';
 require_once BUNNY_VIDEO_PLUGIN_DIR . 'includes/class-bunny-video-taxonomy.php';
+require_once BUNNY_VIDEO_PLUGIN_DIR . 'includes/class-bunny-custom-fields.php';
 
 class Bunny_Video_Plugin {
     private $api_key;

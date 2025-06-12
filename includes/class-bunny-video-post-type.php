@@ -5,6 +5,11 @@
 
 defined('ABSPATH') || exit;
 
+// Make sure we have access to WordPress functions
+if (!function_exists('add_action')) {
+    return;
+}
+
 class Bunny_Video_Post_Type {
     /**
      * Post type name
@@ -16,6 +21,8 @@ class Bunny_Video_Post_Type {
      */
     public function __construct() {
         add_action('init', array($this, 'register_post_type'));
+        add_action('init', array($this, 'register_meta'));
+        add_filter('rest_prepare_' . self::POST_TYPE, array($this, 'add_meta_to_rest'), 10, 3);
     }
 
     /**
@@ -57,5 +64,34 @@ class Bunny_Video_Post_Type {
         );
 
         register_post_type(self::POST_TYPE, $args);
+    }
+
+    /**
+     * Register meta fields
+     */
+    public function register_meta() {
+        register_post_meta(self::POST_TYPE, 'bunny_video_id', array(
+            'type' => 'string',
+            'description' => 'Bunny.net Video ID',
+            'single' => true,
+            'show_in_rest' => true,
+            'auth_callback' => function() {
+                return current_user_can('edit_posts');
+            }
+        ));
+    }
+
+    /**
+     * Add meta to REST API response
+     */
+    public function add_meta_to_rest($response, $post, $request) {
+        $video_id = get_post_meta($post->ID, 'bunny_video_id', true);
+        
+        // Add meta to response
+        $response->data['meta'] = array(
+            'bunny_video_id' => $video_id
+        );
+        
+        return $response;
     }
 }

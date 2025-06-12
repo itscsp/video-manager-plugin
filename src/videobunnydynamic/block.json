@@ -3,15 +3,23 @@
 	"apiVersion": 3,
 	"name": "create-block/videobunnydynamic",
 	"version": "0.1.0",
-	"title": "Video Bunny Dynamic",
-	"category": "widgets",
-	"icon": "smiley",
-	"description": "Example block scaffolded with Create Block tool.",
+	"title": "Bunny.net Video",
+	"category": "media",
+	"icon": "video-alt3",
+	"description": "Embed videos from your Bunny.net video library.",
 	"example": {},
 	"supports": {
-		"interactivity": true
+		"interactivity": true,
+		"align": true,
+		"html": false
 	},
-	"textdomain": "videobunnydynamic",
+	"attributes": {
+		"videoId": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"textdomain": "bunny-video-plugin",
 	"editorScript": "file:./index.js",
 	"editorStyle": "file:./index.css",
 	"style": "file:./style-index.css",

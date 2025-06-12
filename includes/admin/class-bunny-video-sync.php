@@ -1,11 +1,17 @@
 <?php
-defined('ABSPATH') || exit;
+// Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
+}
 
-// Include WordPress core functions
+// Make sure we have access to WordPress functions
+require_once(ABSPATH . 'wp-admin/includes/admin.php');
 require_once(ABSPATH . 'wp-includes/post.php');
 require_once(ABSPATH . 'wp-includes/pluggable.php');
 require_once(ABSPATH . 'wp-admin/includes/image.php');
 require_once(ABSPATH . 'wp-includes/meta.php');
+
+global $wpdb;
 
 class Bunny_Video_Sync {
     private $api_key;
@@ -168,9 +174,33 @@ class Bunny_Video_Sync {
         }
         
         if (!is_wp_error($post_id) && $post_id > 0) {
+            // Store Bunny.net specific metadata
             update_post_meta($post_id, '_bvp_guid', $guid);
             update_post_meta($post_id, '_bvp_library_id', $this->selected_library_id);
             update_post_meta($post_id, '_bvp_video_data', $video);
+            
+            // Update custom fields with video data
+            update_post_meta($post_id, '_video_creator', isset($video['userId']) ? $video['userId'] : '');
+            update_post_meta($post_id, '_bunny_video_id', $guid);
+            
+            // Set video album if collection name is available
+            if (isset($video['collectionId'])) {
+                update_post_meta($post_id, '_video_album', $video['collectionId']);
+            }
+            
+            // Format duration from seconds to readable format (MM:SS)
+            if (isset($video['length'])) {
+                $minutes = floor($video['length'] / 60);
+                $seconds = $video['length'] % 60;
+                $duration = sprintf('%02d:%02d', $minutes, $seconds);
+                update_post_meta($post_id, '_video_duration', $duration);
+            }
+            
+            // Set video resolution if height and width are available
+            if (isset($video['height']) && isset($video['width'])) {
+                $resolution = $video['width'] . 'x' . $video['height'];
+                update_post_meta($post_id, '_video_resolution', $resolution);
+            }
             
             $this->set_post_thumbnail_from_url($post_id, 
                 "https://thumbnail.bunnycdn.com/{$this->selected_library_id}/{$guid}.jpg"

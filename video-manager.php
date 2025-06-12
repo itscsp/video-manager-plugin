@@ -22,6 +22,7 @@ define('BUNNY_VIDEO_PLUGIN_URL', plugin_dir_url(__FILE__));
 // Load required files
 require_once BUNNY_VIDEO_PLUGIN_DIR . 'includes/admin/class-bunny-video-admin.php';
 require_once BUNNY_VIDEO_PLUGIN_DIR . 'includes/admin/class-bunny-video-sync.php';
+require_once BUNNY_VIDEO_PLUGIN_DIR . 'includes/admin/class-bunny-video-fields.php';
 
 class Bunny_Video_Plugin {
     
@@ -39,6 +40,15 @@ class Bunny_Video_Plugin {
     public function init() {
         // Register custom post type
         $this->register_video_post_type();
+        
+        // Initialize custom fields
+        new Bunny_Video_Fields('video', [
+            ['label' => 'Creator', 'id' => '_bvp_creator'],
+            ['label' => 'Duration', 'id' => '_bvp_duration'],
+            ['label' => 'Collection', 'id' => '_bvp_collection'],
+            ['label' => 'Release Date', 'id' => '_bvp_release_date'],
+            ['label' => 'Video Quality', 'id' => '_bvp_quality']
+        ]);
         
         // Add admin menu
         add_action('admin_menu', array($this, 'add_admin_menu'));
@@ -753,6 +763,8 @@ class Bunny_Video_Plugin {
 
 // Initialize the plugin
 $bunny_video_plugin = new Bunny_Video_Plugin();
+
+
 
 // Add custom query vars
 function bunny_video_add_query_vars($vars) {

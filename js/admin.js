@@ -1,4 +1,90 @@
 jQuery(document).ready(function($) {
+    // Handle API Key input
+    $('#api_key').on('change', function() {
+        const apiKey = $(this).val();
+        if (!apiKey) return;
+
+        // Disable library select while loading
+        $('#library_id').prop('disabled', true);
+        
+        // Show loading indicator
+        $('.libraries-loading').show();
+
+        // Fetch libraries from Bunny.net
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'fetch_bunny_libraries',
+                api_key: apiKey,
+                nonce: bunnyVideoSettings.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Clear and populate library dropdown
+                    const select = $('#library_id');
+                    select.empty();
+                    select.append($('<option>', {
+                        value: '',
+                        text: bunnyVideoSettings.selectLibrary
+                    }));
+                    
+                    response.data.libraries.forEach(function(library) {
+                        select.append($('<option>', {
+                            value: library.id,
+                            text: library.name
+                        }));
+                    });
+                    
+                    select.prop('disabled', false);
+                } else {
+                    alert(response.data.message || bunnyVideoSettings.errorMessage);
+                }
+            },
+            error: function() {
+                alert(bunnyVideoSettings.errorMessage);
+            },
+            complete: function() {
+                $('.libraries-loading').hide();
+            }
+        });
+    });
+
+    // Handle Library selection
+    $('#library_id').on('change', function() {
+        const libraryId = $(this).val();
+        const apiKey = $('#api_key').val();
+        if (!libraryId || !apiKey) return;
+
+        // Show loading indicator
+        $('.api-key-loading').show();
+
+        // Fetch Stream API Key
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'fetch_stream_api_key',
+                library_id: libraryId,
+                api_key: apiKey,
+                nonce: bunnyVideoSettings.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#stream_api_key').val(response.data.streamApiKey);
+                    $('#video_pull_zone').val(response.data.pullZone);
+                } else {
+                    alert(response.data.message || bunnyVideoSettings.errorMessage);
+                }
+            },
+            error: function() {
+                alert(bunnyVideoSettings.errorMessage);
+            },
+            complete: function() {
+                $('.api-key-loading').hide();
+            }
+        });
+    });
     console.log('Bunny.net: Admin script loaded');
 
     var urlParams = new URLSearchParams(window.location.search);
